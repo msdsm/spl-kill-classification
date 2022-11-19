@@ -3,7 +3,8 @@ jpg -> numpy
 numpy -> tensor
 tensor.Size(N,f,c,h,w) # 画像ディレクトリの数,そのディレクトリ内の枚数,3,1080,1280
 """
-
+import torch
+import torchvision
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +12,8 @@ from moviepy.editor import *
 import os
 import subprocess
 import cv2
+import time
+import torchvision.transforms.functional as Ffrom torchvision.io import read_image
 #from .utils import *
 
 
@@ -31,6 +34,7 @@ def train_preprocess(raw_videos_path): # "raw_video"を与える
     # 1. 入力をうけとりすべてのmp4ファイルを120フレームに分割しjpg変換
     mp4_list = os.listdir(raw_videos_path)
     # print(mp4_list) # ['dummy.mp4', 'dummy2.mp4']
+    """ jpg作成スキップ
     # ファイルごとのループ
     for file_name in mp4_list:
         # ファイル、拡張子に分割
@@ -47,14 +51,13 @@ def train_preprocess(raw_videos_path): # "raw_video"を与える
         videopath = os.path.join(raw_videos_path, file_name)
         # print(videopath)
         cap = cv2.VideoCapture(videopath)
-        """
-        print(f"width: {cap.get(cv2.CAP_PROP_FRAME_WIDTH)}") # width: 1920.0
-        print(f"height: {cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}") # height: 1080.0
-        print(f"fps: {cap.get(cv2.CAP_PROP_FPS)}") # fps: 30
-        print(f"frame_count: {cap.get(cv2.CAP_PROP_FRAME_COUNT)}") # フレーム数 frame_count: 1800.0 1分の場合
-        print(f"length: {cap.get(cv2.CAP_PROP_FRAME_COUNT) / cap.get(cv2.CAP_PROP_FPS)} s")　#再生時間 length: 21.3 s
-        print("fourcc: " + int(cap.get(cv2.CAP_PROP_FOURCC)).to_bytes(4, "little").decode("utf-8"))　#　コーデックの情報 fourcc: avc1
-        """
+        #print(f"width: {cap.get(cv2.CAP_PROP_FRAME_WIDTH)}") # width: 1920.0
+        #print(f"height: {cap.get(cv2.CAP_PROP_FRAME_HEIGHT)}") # height: 1080.0
+        #print(f"fps: {cap.get(cv2.CAP_PROP_FPS)}") # fps: 30
+        #print(f"frame_count: {cap.get(cv2.CAP_PROP_FRAME_COUNT)}") # フレーム数 frame_count: 1800.0 1分の場合
+        #print(f"length: {cap.get(cv2.CAP_PROP_FRAME_COUNT) / cap.get(cv2.CAP_PROP_FPS)} s")　#再生時間 length: 21.3 s
+        #print("fourcc: " + int(cap.get(cv2.CAP_PROP_FOURCC)).to_bytes(4, "little").decode("utf-8"))　#　コーデックの情報 fourcc: avc1
+
         fps = cap.get(cv2.CAP_PROP_FPS)
         frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         # print(fps, frame_count)
@@ -99,13 +102,102 @@ def train_preprocess(raw_videos_path): # "raw_video"を与える
             # jpgに変換後,4秒動画もういらない
             os.remove(save_tmp_path)
         os.rmdir(tmp_video_path) # 空でなければ削除されない 4秒動画保存先削除
-    
     # ここでmp4_listのloop終わり
     # data/notlabel/mp4ファイルの名前/　にjpg作成完了
+    jpg作成スキップ終わり"""
 
+    
+    
+    data_path = './dummy_data'
+    data_notlabel_path = './dummy_data/dummy_notlabel'
+    notlabel_video_list = sorted(os.listdir(data_notlabel_path))
+    # print(notlabel_video_list) # mp4のファイル名
+    batch_size = 0
+    frame = 120
+    channel = 3
+    height = 1080
+    width = 1920
+    for mp4_list_name in notlabel_video_list:
+        mp4_list_name_path = os.path.join(data_notlabel_path, mp4_list_name)
+        batch_size += len(os.listdir(mp4_list_name_path))
+    # print(batch_size)
+    input_data = torch.zeros([batch_size, frame//5, channel, height//3, width//3], dtype=torch.uint8, device='cuda:0')
+    # print(input_data.size())
+    # print(input_data.device)
+    input_label = torch.zeros([batch_size, 1], dtype=torch.uint8, device='cuda:0') # 0か1のみ
+    label_mask = (26, 26, 26)
+    batch_size_idx = -1
+    jpg_tensor = torch.zeros([3, 1080//6, 1920//6], dtype=torch.uint8, device='cuda:0')
+    jpg_tensor_sum = torch.zeros([3, 1080//6, 1920//6], dtype=torch.uint8, device='cuda:0')
+    tmp_tensor = torch.zeros([3, 1080, 1920], dtype=torch.uint8, device='cuda:0')
+    # print(jpg_tensor.size(), jpg_tensor.device)
+    # print(jpg_tensor_sum.size(), jpg_tensor_sum.device)
+    # print(tmp_tensor.size(), tmp_tensor.device)
+    for mp4_list_name in notlabel_video_list:
+        # print(mp4_list_name)
+        mp4_list_name_path = os.path.join(data_notlabel_path, mp4_list_name)
+        # 4秒動画ごとのループ
+        for unit_video_name in sorted(os.listdir(mp4_list_name_path)):   
+            batch_size_idx += 1
+            # 4秒動画をjpgに変換したディレクトリ内
+            # print(unit_video_name)
+            unit_video_path = os.path.join(mp4_list_name_path, unit_video_name)
+            tmp_jpg_list = sorted(os.listdir(unit_video_path))
+            # print(tmp_jpg_list)
+
+            # jpgごとのループ つまりframe
+            frame_loop_cnt = 0
+            bool label_flag = False
+            for jpg_file_name in tmp_jpg_list:
+                frame_loop_cnt += 1
+                jpg_file_path = os.path.join(unit_video_path, jpg_file_name)
+                # print(jpg_file_path)
+                sta = time.perf_counter()
+                tmp_tensor = read_image(path=jpg_file_path).to('cuda:0')
+                end = time.perf_counter()
+                print("img -> tensor : {}".format(end-sta))
+                # print(tmp_tensor.size()) # 3*1080*1920
+                # print(tmp_tensor.device)
+
+                # label特定する
+                tmp_flag = True
+                for iii in range(20):
+                    for jjj in range(20):
+                        tar = (tmp_tensor[0][995+iii][705+jjj], tmp_tensor[1][995+iii][705+jjj], tmp_tensor[2][995+iii][705+jjj])
+                        if tar != mask:
+                            tmp_flag = False
+                if tmp_flag:
+                    label_flag = True
+                # jpg_tensorを初期化
+                sta = time.perf_counter()
+                jpg_tensor.mul_(0)
+                end = time.perf_counter()
+                print("chw loop {}".format(end-sta))
+
+                # jpg_tensorへ圧縮
+                jpg_tensor = F.resize(img=tmp_tensor, size=(1080//6, 1920//6)).clone()
+                
+                if frame_loop_cnt%5 == 0:
+                    # input_dataにセットする
+                    print(frame_loop_cnt)
+                    input_data[batch_size_idx][frame_loop_cnt//5 - 1] = jpg_tensor_sum.clone()
+                    # jpg_tensor_sum初期化
+                    jpg_tensor_sum.mul_(0)
+                else :
+                    # 加算
+                    print(frame_loop_cnt, "else")
+                    jpg_tensor_sum.add_(jpg_tensor.div(5, rounding_mode='floor'))
+            # jpgファイルごとのループ終わり
+            if label_flag:
+                input_label[batch_size_idx][0] = 1
+            else :
+                input_label[batch_size_idx][0] = 0
+        # ４秒動画ごと（バッチ）ごとのループ終わり
+    # mp4ごとのループ終わり input_data完成
+    print(input_data.size())
+    print(input_label.size())
     """
     このあとかくこと
-    ラベル特定
     ラベルに合わせてディレクトリをnotlabelからkill or notkillへ移動する これ必要なくないか
     120枚のjpgをまとめた複数のディレクトリ(Nこ)からtensor.Size(N,120,3,1080,1280)作成 ラベルも対応させる
     jpgすべて削除
