@@ -243,6 +243,8 @@ def train_preprocess(raw_videos_path): # "raw_video"を与える
     print("テンソルを生成しました。")
     print("入力テンソルのサイズは{}です。".format(input_data.size()))
     print("教師データテンソルのサイズは{}です。".format(input_label.size()))
+    print("入力テンソルのデバイスは{}です。".format(input_data.device))
+    print("教師データテンソルのデバイスは{}です。".format(input_label.device))
     ret = input_data, input_label
 
     # print(len(ret)) # 2
