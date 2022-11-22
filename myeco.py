@@ -3,9 +3,11 @@ network 定義
 """
 
 import sys
-sys.path.append("layer")
-from ECO_2D import ECO_2D
-from ECO_3D import ECO_3D
+# sys.path.append("original_layers")
+# from ECO_2D import ECO_2D
+# from ECO_3D import ECO_3D
+
+from eco import *
 
 import torch
 import torch.nn as nn
