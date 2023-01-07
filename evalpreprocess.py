@@ -1,18 +1,10 @@
 """
 推論前処理
-preprocess.pyのeval_preprocessを実行する
-得られたxを保存する
+
 mp4をresultへ移動する
 xの名前をmp4と一致させる
 result下にmp4の名前のディレクトリを生成する
 そのディレクトリ以下にmp4, ptファイルを保存する
-
-推論したら出力されたラベルをlabel.ptという名前で保存
-
-推論後はループを回す際にlabel.ptがあるかどうかで判別
-label.ptがあるなら推論をすでにしているということなので、切り抜き生成する
-label.ptをloadしてmp4を切り抜いて保存する
-以上の処理はローカルのCPUで可能？
 """
 
 import torch

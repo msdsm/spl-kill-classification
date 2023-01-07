@@ -4,10 +4,6 @@ resultの中からlabel.ptが存在しないディレクトリを探索
 見つけたらディレクトリを出力する
 input.ptをロードして順伝搬
 label.ptをそのディレクトリ内に保存する
-
-
-eval2はevalと何が違う？
-忘れたけどこれでうまく行く
 """
 
 import torch
@@ -29,18 +25,19 @@ from myeco import myECO
 
 
 def main():
-    parameters_load_path = "./trained_model_file/20221230-2.pth"
+    device = "cuda:0"
+    parameters_load_path = "./trained_model_file/20221231.pth"
     net = myECO()
-    net = net.to("cuda")
-    net.train()
+    net = net.to(device)
+    net.eval()
     ####################超重要####################
     net.load_state_dict(torch.load(parameters_load_path)) # load
     ##############################################
 
-    criterion = nn.BCELoss() # 最終的な出力がシグモイドのとき使用可能
+    criterion = nn.CrossEntropyLoss() # 最終的な出力がシグモイドのとき使用可能
     max_batch_size = 5
-    x2 = torch.zeros(max_batch_size, 24, 3, 180, 320).to("cuda")
-    t = torch.zeros(0, 1).to("cuda")
+    x2 = torch.zeros(max_batch_size, 24, 3, 180, 320).to(device)
+    t = torch.zeros(0).to(device)
     # result内loop
     result_path = "./result"
     for name in sorted(os.listdir(result_path)):
@@ -69,7 +66,7 @@ def main():
                 t = torch.cat([t, outputs], axis=0)
             print("name : {}, r : {}".format(name, r))
 
-            x2 = torch.zeros(r, 24, 3, 180, 320).to("cuda")
+            x2 = torch.zeros(r, 24, 3, 180, 320).to(device)
             for i in range(r):
                 x2[i] = x.clone()[q*max_batch_size + i]
             outputs = net(x2)
@@ -77,8 +74,11 @@ def main():
         
             print(t.size())
             print(t)
+            _, predicted = t.max(1)
             saved_label_path = os.path.join(directory_path, "label.pt")
-            torch.save(t, saved_label_path)
+            print(predicted)
+            print(predicted.size())
+            torch.save(predicted, saved_label_path)
 
 
 

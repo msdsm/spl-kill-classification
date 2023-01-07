@@ -1,12 +1,11 @@
 """
-切り抜き生成ファイル
 推論後処理
+
 resultの中からlabel.ptは存在するがhighlight.mp4とempty.txtは存在しないディレクトリを探す
 あったらディレクトリ名を出力する
 label.ptをロードする
 label.ptとmp4ファイルから切り抜き生成してhighlight.mp4という名前で保存
-多分CPUでok
-そのためにtensor -> numpy
+CPUでも実行可能
 """
 
 
@@ -60,7 +59,7 @@ def eval_postprocess(result_path):
             time = 0
             unit_frames = 120
             for idx, tmp_num in enumerate(np_t):
-                if tmp_num[0] > 0.5: # 出力が(0,1)であることを想定　{0,1}の２値しか取らない場合でもok
+                if tmp_num == 1: # 出力が{0,1}の２値しか取らない
                     cut_time.append(idx*(unit_frames//fps))
             tmp_video_path = os.path.join(directory_path,"tmp_cut_video") # 切り抜いた動画の保存先
             if not os.path.exists(tmp_video_path):
